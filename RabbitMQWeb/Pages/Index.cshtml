@@ -4,7 +4,54 @@
     ViewData["Title"] = "Home page";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<div>
+    <input type="text" id="nomeRelatorio" placeholder="Nome do Relatório" />
+    <button id="submitRelatorio">Adicionar Relatório</button>
 </div>
+
+<div id="relatorios"></div>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/5.0.9/signalr.min.js"></script>
+    <script>
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("https://localhost:7141/relatorioHub", {
+                transport: signalR.HttpTransportType.WebSockets,
+                withCredentials: true
+            })
+            .build();
+
+        connection.on("RelatorioAtualizado", function (relatorio) {
+            const relatorioElement = document.getElementById(relatorio.id);
+            if (relatorioElement) {
+                relatorioElement.innerHTML = `Relatório: ${relatorio.nome} - Status: ${relatorio.status} - Data: ${relatorio.data ? new Date(relatorio.data).toLocaleString() : 'N/A'}`;
+            }
+        });
+
+        connection.start().catch(function (err) {
+            return console.error(err.toString());
+        });
+
+        document.getElementById("submitRelatorio").addEventListener("click", function () {
+            const nomeRelatorio = document.getElementById("nomeRelatorio").value;
+            if (nomeRelatorio) {
+                fetch('https://localhost:7141/api/RabbitMq', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(nomeRelatorio)
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        const relatoriosDiv = document.getElementById("relatorios");
+                        const relatorioElement = document.createElement("div");
+                        relatorioElement.id = data.id;
+                        relatorioElement.innerHTML = `Relatório: ${data.nome} - Status: ${data.status} - Data: ${data.data ? new Date(data.data).toLocaleString() : 'N/A'}`;
+                        relatoriosDiv.appendChild(relatorioElement);
+                    })
+                    .catch(error => console.error('Error:', error));
+            }
+        });
+    </script>
+}

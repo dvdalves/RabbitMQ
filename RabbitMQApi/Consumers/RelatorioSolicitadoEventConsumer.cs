@@ -1,10 +1,12 @@
 ﻿using MassTransit;
+using Microsoft.AspNetCore.SignalR;
 using RabbitMQApi.Events;
+using RabbitMQApi.Hubs;
 using RabbitMQApi.Models;
 
 namespace RabbitMQApi.Consumers;
 
-public class RelatorioSolicitadoEventConsumer(ILogger<RelatorioSolicitadoEventConsumer> logger, List<Relatorio> relatorios) : IConsumer<RelatorioSolicitadoEvent>
+public class RelatorioSolicitadoEventConsumer(ILogger<RelatorioSolicitadoEventConsumer> logger, List<Relatorio> relatorios, IHubContext<RelatorioHub> hubContext) : IConsumer<RelatorioSolicitadoEvent>
 {
     public async Task Consume(ConsumeContext<RelatorioSolicitadoEvent> context)
     {
@@ -21,6 +23,8 @@ public class RelatorioSolicitadoEventConsumer(ILogger<RelatorioSolicitadoEventCo
             relatorio.Status = "Concluído";
             relatorio.Data = DateTime.Now;
         }
+
+        await hubContext.Clients.All.SendAsync("RelatorioAtualizado", relatorio);
 
         logger.LogInformation($"Relatório processado: {context.Message.Nome}", message.Id, message.Nome);
     }

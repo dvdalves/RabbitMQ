@@ -1,15 +1,26 @@
 using MassTransit;
 using RabbitMQApi.Consumers;
+using RabbitMQApi.Events;
+using RabbitMQApi.Hubs;
 using RabbitMQApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-builder.Services.AddSingleton<List<Relatorio>>(); // Adiciona a lista de relatórios como um serviço singleton
+builder.Services.AddSingleton<List<Relatorio>>();
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddSignalR();
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowSpecificOrigin",
+        builder => builder
+            .WithOrigins("https://localhost:7247")
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials());
+});
 
 builder.Services.AddMassTransit(busConfigurator =>
 {
@@ -27,9 +38,11 @@ builder.Services.AddMassTransit(busConfigurator =>
     });
 });
 
+builder.Services.AddSingleton<RelatorioSolicitadoEventConsumer>();
+builder.Services.AddSingleton<IConsumer<RelatorioSolicitadoEvent>, RelatorioSolicitadoEventConsumer>();
+
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -40,6 +53,9 @@ app.UseHttpsRedirection();
 
 app.UseAuthorization();
 
+app.UseCors("AllowSpecificOrigin");
+
 app.MapControllers();
+app.MapHub<RelatorioHub>("/relatorioHub");
 
 app.Run();
